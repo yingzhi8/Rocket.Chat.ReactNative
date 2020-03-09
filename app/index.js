@@ -1,5 +1,7 @@
 import React from 'react';
-import { View, Linking, BackHandler } from 'react-native';
+import {
+	View, Linking, BackHandler, ScrollView
+} from 'react-native';
 import { createAppContainer, createSwitchNavigator } from 'react-navigation';
 import { createStackNavigator } from 'react-navigation-stack';
 import { createDrawerNavigator } from 'react-navigation-drawer';
@@ -41,6 +43,9 @@ import Tablet, { initTabletNav } from './tablet';
 import sharedStyles from './views/Styles';
 import { SplitContext } from './split';
 import { IDENTIFIER, ANDROID_PACKAGE_CONTEXT } from './constants/credentials';
+
+import RoomsListView from './views/RoomsListView';
+import RoomView from './views/RoomView';
 
 if (isIOS) {
 	const RNScreens = require('react-native-screens');
@@ -110,9 +115,7 @@ const OutsideStackModal = createStackNavigator({
 });
 
 const RoomRoutes = {
-	RoomView: {
-		getScreen: () => require('./views/RoomView').default
-	},
+	RoomView,
 	ThreadMessagesView: {
 		getScreen: () => require('./views/ThreadMessagesView').default
 	},
@@ -126,9 +129,7 @@ const RoomRoutes = {
 
 // Inside
 const ChatsStack = createStackNavigator({
-	RoomsListView: {
-		getScreen: () => require('./views/RoomsListView').default
-	},
+	RoomsListView,
 	RoomActionsView: {
 		getScreen: () => require('./views/RoomActionsView').default
 	},
@@ -217,6 +218,9 @@ const SettingsStack = createStackNavigator({
 	},
 	ThemeView: {
 		getScreen: () => require('./views/ThemeView').default
+	},
+	DefaultBrowserView: {
+		getScreen: () => require('./views/DefaultBrowserView').default
 	}
 }, {
 	defaultNavigationOptions: defaultHeader,
@@ -466,7 +470,7 @@ class CustomModalStack extends React.Component {
 			closeModal();
 			return true;
 		}
-		if (state && state.routes[state.index] && state.routes[state.index].routes.length > 1) {
+		if (state && state.routes[state.index] && state.routes[state.index].routes && state.routes[state.index].routes.length > 1) {
 			navigation.goBack();
 		}
 		return false;
@@ -480,6 +484,24 @@ class CustomModalStack extends React.Component {
 		const pageSheetViews = ['AttachmentView'];
 		const pageSheet = pageSheetViews.includes(getActiveRouteName(navigation.state));
 
+		const androidProps = isAndroid && {
+			style: { marginBottom: 0 }
+		};
+
+		let content = (
+			<View style={[sharedStyles.modal, pageSheet ? sharedStyles.modalPageSheet : sharedStyles.modalFormSheet]}>
+				<ModalSwitch navigation={navigation} screenProps={{ ...screenProps, closeModal: this.closeModal }} />
+			</View>
+		);
+
+		if (isAndroid) {
+			content = (
+				<ScrollView overScrollMode='never'>
+					{content}
+				</ScrollView>
+			);
+		}
+
 		return (
 			<Modal
 				useNativeDriver
@@ -488,10 +510,9 @@ class CustomModalStack extends React.Component {
 				onBackdropPress={closeModal}
 				hideModalContentWhileAnimating
 				avoidKeyboard
+				{...androidProps}
 			>
-				<View style={[sharedStyles.modal, pageSheet ? sharedStyles.modalPageSheet : sharedStyles.modalFormSheet]}>
-					<ModalSwitch navigation={navigation} screenProps={{ ...screenProps, closeModal: this.closeModal }} />
-				</View>
+				{content}
 			</Modal>
 		);
 	}

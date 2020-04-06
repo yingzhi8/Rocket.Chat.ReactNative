@@ -84,6 +84,7 @@ class RoomView extends React.Component {
 		const toggleFollowThread = navigation.getParam('toggleFollowThread', () => {});
 		const goRoomActionsView = navigation.getParam('goRoomActionsView', () => {});
 		const unreadsCount = navigation.getParam('unreadsCount', null);
+		const roomUserId = navigation.getParam('roomUserId');
 		if (!rid) {
 			return {
 				...themedHeader(screenProps.theme)
@@ -100,6 +101,7 @@ class RoomView extends React.Component {
 					subtitle={subtitle}
 					type={t}
 					widthOffset={tmid ? 95 : 130}
+					roomUserId={roomUserId}
 					goRoomActionsView={goRoomActionsView}
 				/>
 			),
@@ -162,10 +164,11 @@ class RoomView extends React.Component {
 		const selectedMessage = props.navigation.getParam('message');
 		const name = props.navigation.getParam('name');
 		const fname = props.navigation.getParam('fname');
+		const prid = props.navigation.getParam('prid');
 		this.state = {
 			joined: true,
 			room: room || {
-				rid: this.rid, t: this.t, name, fname
+				rid: this.rid, t: this.t, name, fname, prid
 			},
 			roomUpdate: {},
 			member: {},
@@ -219,10 +222,13 @@ class RoomView extends React.Component {
 			if (this.tmid) {
 				navigation.setParams({ toggleFollowThread: this.toggleFollowThread, goRoomActionsView: this.goRoomActionsView });
 			}
-			if (isAuthenticated && this.rid) {
-				this.init();
-			} else if (this.rid) {
-				EventEmitter.addEventListener('connected', this.handleConnected);
+			if (this.rid) {
+				this.sub.subscribe();
+				if (isAuthenticated) {
+					this.init();
+				} else {
+					EventEmitter.addEventListener('connected', this.handleConnected);
+				}
 			}
 			if (isIOS && this.rid) {
 				this.updateUnreadCount();
@@ -358,7 +364,6 @@ class RoomView extends React.Component {
 						this.setLastOpen(null);
 					}
 					RocketChat.readMessages(room.rid, newLastOpen, true).catch(e => console.log(e));
-					this.sub.subscribe();
 				}
 			}
 
@@ -382,13 +387,16 @@ class RoomView extends React.Component {
 
 	getRoomMember = async() => {
 		const { room } = this.state;
-		const { rid, t } = room;
+		const { t } = room;
 
-		if (t === 'd') {
-			const { user } = this.props;
+		if (t === 'd' && !RocketChat.isGroupChat(room)) {
+			const { user, navigation } = this.props;
 
 			try {
-				const roomUserId = RocketChat.getRoomMemberId(rid, user.id);
+				const roomUserId = RocketChat.getUidDirectMessage(room, user.id);
+
+				navigation.setParams({ roomUserId });
+
 				const result = await RocketChat.getUserInfo(roomUserId);
 				if (result.success) {
 					return result.user;
@@ -662,7 +670,6 @@ class RoomView extends React.Component {
 	// eslint-disable-next-line react/sort-comp
 	fetchThreadName = async(tmid, messageId) => {
 		try {
-			const { room } = this.state;
 			const db = database.active;
 			const threadCollection = db.collections.get('threads');
 			const messageCollection = db.collections.get('messages');
@@ -685,7 +692,7 @@ class RoomView extends React.Component {
 					await db.batch(
 						threadCollection.prepareCreate((t) => {
 							t._raw = sanitizedRaw({ id: thread._id }, threadCollection.schema);
-							t.subscription.set(room);
+							t.subscription.id = this.rid;
 							Object.assign(t, thread);
 						}),
 						messageRecord.prepareUpdate((m) => {
@@ -695,7 +702,7 @@ class RoomView extends React.Component {
 				});
 			}
 		} catch (e) {
-			log(e);
+			// log(e);
 		}
 	}
 

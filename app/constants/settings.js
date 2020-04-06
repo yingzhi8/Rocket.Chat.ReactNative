@@ -47,8 +47,14 @@ export default {
 	Accounts_ShowFormLogin: {
 		type: 'valueAsBoolean'
 	},
+	Accounts_ManuallyApproveNewUsers: {
+		type: 'valueAsBoolean'
+	},
 	CROWD_Enable: {
 		type: 'valueAsBoolean'
+	},
+	DirectMesssage_maxUsers: {
+		type: 'valueAsNumber'
 	},
 	Accounts_Directory_DefaultView: {
 		type: 'valueAsString'

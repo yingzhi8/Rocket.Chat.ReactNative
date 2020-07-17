@@ -31,7 +31,7 @@ describe('Broadcast room', () => {
 		await waitFor(element(by.id('create-channel-view'))).toExist().withTimeout(5000);
 		await element(by.id('create-channel-name')).replaceText(`broadcast${ data.random }`);
 		await sleep(2000);
-		await element(by.id('create-channel-broadcast')).tap(); 
+		await element(by.id('create-channel-broadcast')).longPress(); //https://github.com/facebook/react-native/issues/28032 
 		if (device.getPlatform() === 'ios') { //Because this tap is FLAKY on iOS
 			await expect(element(by.id('create-channel-broadcast'))).toHaveValue('1')
 		}
